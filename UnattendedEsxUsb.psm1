@@ -379,7 +379,6 @@ function Get-IndicesOf {
         ++$i
     }
     
-    # return $i
 }
 
 #########################################################
@@ -467,14 +466,12 @@ function Format-EsxUsb {
                     break
                 }
             }
-        } else {
+        }
+        else {
             # Prompt for version of ESXi Installer to create
             $getVersion = Get-EsxIsoVersion
             $newUsbName = $getVersion[1]
         }
-
-        # Verifies to make sure there is an ISO mounted
-
 
         # Verifies to make sure there is proper formated USB drive mounted
         if ($newUsbName -eq "Error") {
@@ -486,22 +483,11 @@ function Format-EsxUsb {
             break
         }
 
-        # Get the sudo password for currently logged on user
-        # Get-SudoPw | Out-Null
         Start-Sleep -Seconds 1
-        
         Write-Host -Object "Starting the format of the ESXi USB unattended installation drive" -ForegroundColor Blue
-
-        # Gets the ESXi Volume Name, USB Drive & USB Identifier
-        # $volumeEsxIso = $esxIso[0]
         
         $usbDisk = Get-DiskUtilDisk -DiskString 'external, physical'
         $usbId = Get-DiskUtilIdentifier -DiskIdString 'NO NAME'
-
-        # if (!$usbId) {
-        #     Write-Error "There is no blank USB found with the label: 'NO NAME'"
-        #     break
-        # }
 
         # Format the previous found USB drive
         diskutil eraseDisk FAT32 $newUsbName MBRFormat $usbDisk | Out-Null
@@ -511,9 +497,7 @@ function Format-EsxUsb {
 
         # Start up the command-line partitioner 'fdisk' in interactive mode: 
         # flag first partition as active and bootable, write the changes, and exit fdisk
-        # 'f 1' | sudo fdisk -e /dev/$usbDisk | Out-Null
-        # 'write' | sudo fdisk -e /dev/$usbDisk | Out-Null
-        # 'quit' | sudo fdisk -e /dev/$usbDisk | Out-Null
+
         Write-Output "f 1\nwrite\nquit" | sudo fdisk -e /dev/$usbDisk | Out-Null
         Write-Host -Object "Ignore fdisk errors above there is no way to prevent these messages" -ForegroundColor Yellow
 
@@ -582,10 +566,7 @@ function Find-EsxIso {
 
         $isoVolumes = diskutil list
         $isosMounted = Get-IndicesOf -Array $isoVolumes -Value 'disk image'
-        
         $MountedEsxIsos = New-Object System.Collections.ArrayList
-
-
     }
     
     process {
@@ -607,7 +588,8 @@ function Find-EsxIso {
                 }
                 
             }
-        } else {
+        }
+        else {
             $esxIso = $isoVolumes[$isosMounted]
             $usbIdName = [string]$esxIso
             $diskId = $usbIdName.Substring(0, $usbIdName.IndexOf(' '))
@@ -653,11 +635,6 @@ function Get-EsxIsoVersion {
         if ($EsxIsoVer) {
             $isoSelected = $EsxIsoVer
             $esxIsosFullName = Find-EsxIso
-
-            # if (!$esxIsosFullName) {
-            #     Write-Error -Message "You either don't have an ESXi ISO currently mounted or it's not an approved version"
-            #     break
-            # }
 
             switch ($isoSelected) {
                 "6.7.0U2a" {
@@ -1050,7 +1027,6 @@ function Reset-EsxUsb {
         Write-Host -ForegroundColor Yellow $usbDriveNum
         Write-Host -ForegroundColor Red "Are you sure you want to format the external drive listed above? [Y or N]: " -NoNewline
         $formatAnswer = Read-Host
-        # $formatAnswer
 
         switch ($formatAnswer) {
             'y' {
@@ -1314,50 +1290,9 @@ function Find-EsxCsv {
             Write-Error -Message "The specified path to csv is incorrect, please verify path of csv and try again"
             break
         } else {
-            # $esxHosts = Import-Csv -Path $FilePath
             $csvImportHosts = Import-Csv -Path $FilePath
         }
-<#
-        # Gets the imported csv headers
-        $csvHeaders = $esxHosts[0].psobject.properties.name
 
-        # Headers to match against CSV for command to use
-        $set1 = @('Passwd','Hostname','VlanId','IpAddr','Subnet','Gateway','Dns1','Nic1')
-        [string]$set1String = $null
-        $set1String = $set1 -join ","
-        $set2 = @('Passwd','Hostname','VlanId','IpAddr','Subnet','Gateway','Dns1','Dns2','Nic1')
-        [string]$set2String = $null
-        $set2String = $set2 -join ","
-        $set3 = @('Passwd','Hostname','VlanId','IpAddr','Subnet','Gateway','Dns1','Dns2','Nic1','Nic2')
-        [string]$set3String = $null
-        $set3String = $set3 -join ","
-        $set4 = @('Passwd','Hostname','VlanId','IpAddr','Subnet','Gateway','Dns1','Nic1','Nic2')
-        [string]$set4String = $null
-        $set4String = $set4 -join ","
-
-        # Places all the proper header columns into an array and compares against imported CSV
-        $sets = @($set1,$set2,$set3,$set4)
-
-        foreach ($set in $sets) {
-            $result = Compare-Object -ReferenceObject $csvHeaders -DifferenceObject $set
-            if ($null -eq $result) {
-                $commandSet = $set
-            }
-        }
-
-        # Takes matching header array and determines witch KsConfig command to use
-        [string]$commands = $null
-        $commands = $commandSet -join ","
-
-        switch ($commands) {
-            $set1String { $ksCommand = "-passwd $EsxPasswd -hostname $EsxHostname -vlanId $EsxVlanId -ipAddr $EsxIpAddr -subnet $EsxSubnet -gateway $EsxGateway -dns1 $EsxDns1 -firstNic $EsxFirstNic" }
-            $set2String { $ksCommand = "-passwd $EsxPasswd -hostname $EsxHostname -vlanId $EsxVlanId -ipAddr $EsxIpAddr -subnet $EsxSubnet -gateway $EsxGateway -dns1 $EsxDns1 -dns2 $EsxDns2 -firstNic $EsxFirstNic" }
-            $set3String { $ksCommand = "-passwd -hostname -vlanId -ipAddr -subnet -gateway -dns1 -dns2 -firstNic -secondNic" }
-            $set4String { $ksCommand = "-passwd $EsxPasswd -hostname $EsxHostname -vlanId $EsxVlanId -ipAddr $EsxIpAddr -subnet $EsxSubnet -gateway $EsxGateway -dns1 $EsxDns1 -firstNic $EsxFirstNic -secondNic $EsxSecondNic" }
-            Default { Write-Error -Message "The CSV isn't formated correctly with the proper columns/headers"}
-        }
-#>
-        # return $ksCommand
         return $csvImportHosts
     }
 
