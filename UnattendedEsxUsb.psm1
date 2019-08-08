@@ -1032,12 +1032,10 @@ function Reset-EsxUsb {
     #>
     [CmdletBinding()]
     param (
-        <#
         # Specify USB disk to reset
         [Parameter()]
         [string]
         $usbDriveSelected
-        #>
     )
     
     begin {
@@ -1053,22 +1051,32 @@ function Reset-EsxUsb {
         if (!$externalUsb) {
             Write-Error -Message "Could not find USB drive of type (external, physical)"
             break
+        } else {
+            $usbDrives = New-Object System.Collections.ArrayList
+            for ($i = 0; $i -lt $externalUsb.Count; $i++) {
+                $externalUsbDrive = $diskUtilList[$externalUsb[$i]]
+                $usbDriveNum = $externalUsbDrive.Substring(0, $externalUsbDrive.IndexOf(' '))
+                $usbDrives.Add($usbDriveNum)
+            }
         }
-        $externalUsbDrive = $diskUtilList[$externalUsb]
-        $usbDriveNum = $externalUsbDrive.Substring(0, $externalUsbDrive.IndexOf(' '))
-
+        
         # Verify formatting of the previously found USB drive
-        diskutil list $usbDriveNum
-        Write-Host -ForegroundColor Yellow $usbDriveNum
-        Write-Host -ForegroundColor Red "Are you sure you want to format the external drive listed above? [Y or N]: " -NoNewline
+        for ($i = 0; $i -lt $usbDrives.Count; $i++) {
+            diskutil list $usbDrives[$i]
+            Write-Host -ForegroundColor Yellow $usbDrives[$i]
+        }
+        Write-Host -ForegroundColor Red "Are you sure you want to format the external drive(s) listed above? [Y or N]: " -NoNewline
         $formatAnswer = Read-Host
 
         switch ($formatAnswer) {
             'y' {
-                # Format the previously found and confirmed USB drive
+                # Formats the previously found and confirmed USB drive(s)
                 $resetUsbName = 'NO NAME'
-                diskutil eraseDisk FAT32 $resetUsbName MBRFormat $usbDriveNum | Out-Null
-                Write-Host -ForegroundColor Green "The drive $usbDriveNum was formatted and labeled '$resetUsbName'"
+                for ($i = 0; $i -lt $usbDrives.Count; $i++) {
+                    $usbDriveNum = $usbDrives[$i]
+                    diskutil eraseDisk FAT32 $resetUsbName MBRFormat $usbDriveNum | Out-Null
+                    Write-Host -ForegroundColor Green "The drive $usbDriveNum was formatted and labeled '$resetUsbName'"
+                }
             }
             'n' { 
                 diskutil list
