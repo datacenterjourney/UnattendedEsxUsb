@@ -1234,8 +1234,6 @@ function New-BulkEsxUsb {
     
     process {
         # Checks the formatting of the CSV to determine the proper command structure
-        # Write-Host -Object "Enter the path to the CSV to build the ESXi USBs: " -NoNewline -ForegroundColor Green
-        # $csvPath = Read-Host
         $csvHosts = Find-EsxCsv -FilePath $csvPath
 
         # Passes the CSV import into an array object list
@@ -1243,7 +1241,7 @@ function New-BulkEsxUsb {
         foreach ($csvHost in $csvHosts) {
             $esxHosts.Add($csvHost) | Out-Null
         }
-
+        
         # Gets the ESXi ISO version to use
         if ($EsxBuildVer) {
             $isoInfo = Get-EsxIsoVersion -EsxIsoVer $EsxBuildVer
@@ -1257,11 +1255,149 @@ function New-BulkEsxUsb {
         }
         $newUsbName = $isoInfo[1]
         $isoName = $isoInfo[0]
-
         
+        # Runs through all of the ESX info from the CSV and creates USBs until all items in array are processed
+        do {
+            # Checks for connected USB drives
+            $esxUsbs = Find-EsxUsb
+            if ($esxUsbs.GetType().Name -eq "PSCustomObject") {
+                $usbsConnected = @($esxUsbs)
+            }else {
+                $usbsConnected = New-Object System.Collections.ArrayList
+                foreach ($usb in $esxUsbs) {
+                    $usbsConnected.Add($usb) | Out-Null
+                }
+            }
 
+            if ($usbsConnected.Count -ge $esxHosts.Count) {
+                $remaining = $usbsConnected.Count - $esxHosts.Count
+                Write-Host -Object "There are only $remaining USBs left to create, additional USBs will be ignored" -ForegroundColor Magenta
+                # Removes the last X entries from the array 
+                for ($i = $remaining ; $i -gt 0; $i--) {
+                    $usbsConnected.RemoveAt($i)
+                }
+            }
+
+            # Formats the USBs to be able to use for ESXi bootable installer
+            Write-Host -Object "Starting the format of the ESXi USB drives" -ForegroundColor Blue
+            $usbNames = New-Object System.Collections.ArrayList
+
+            for ($i = 0; $i -lt $usbsConnected.Count; $i++) {
+                $name = $newUsbName + $i
+                $usbNames.Add($name) | Out-Null
+                diskutil eraseDisk FAT32 $name MBRFormat $usbsConnected[$i].Disk | Out-Null
+                diskutil unmount $usbsConnected[$i].Identifier | Out-Null
+                Write-Output "f 1\nwrite\nquit" | sudo fdisk -e $usbsConnected[$i].Disk | Out-Null
+                Write-Host -Object "Ignore fdisk errors above there is no way to prevent these messages" -ForegroundColor Yellow
+            }
+            Start-Sleep -Seconds 1
+            for ($i = 0; $i -lt $usbsConnected.Count; $i++) {
+                diskutil mount $usbsConnected[$i].Identifier | Out-Null
+            }
+
+            # Starts the copy of the ESXi ISO to the USB drives Asyncronously and adds them to the $jobs array
+            Write-Host -Object "Starting the creation of the ESXi USB drives" -ForegroundColor Blue
+            $jobs = New-Object System.Collections.ArrayList
+            for ($i = 0; $i -lt $usbsConnected.Count; $i++) {
+                $usbVol = $usbNames[$i]
+                $scriptBlock = {
+                    param($isoName,$usbVol)
+                    $source = "/Volumes/$isoName/*"
+                    $target = "/Volumes/$usbVol"
+                    Copy-Item -Recurse -Path $source -Destination $target
+                }
+                $copyJob = Start-Job -ScriptBlock $scriptBlock -ArgumentList $isoName, $usbVol
+                $jobs.Add($copyJob) | Out-Null
+            }
+
+            # Waits for all of the copy jobs to complete before moving on
+            do {
+                Start-Sleep -Seconds 1
+            } until ($jobs.State -ne 'Running')
+
+            # Renames the ISOLINUX.CFG file to SYSLINUX.CFG
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                $usbVolNames = $usbNames[$i]
+                Rename-Item -Path /Volumes/$usbVolNames/ISOLINUX.CFG /Volumes/$usbVolNames/SYSLINUX.CFG
+            }
+
+            # Edits the BOOT.CFG files to point to kickstart script, change timeout, and edit the title
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                $usbBootNames = $usbNames[$i]
+                Set-BulkBootCfg -UsbNames $usbBootNames
+            }
+
+            # Determine which Kickstart Config to use for builds
+            $ksCsvInfo = $esxHosts[0]
+
+            if ($ksCsvInfo.Nic2 -and $ksCsvInfo.Dns2) {
+                $ksToUse = 'ksConfig1'
+            } elseif ($ksCsvInfo.Nic2 -and !$ksCsvInfo.Dns2) {
+                $ksToUse = 'ksConfig2'
+            } elseif (!$ksCsvInfo.Nic2 -and $ksCsvInfo.Dns2) {
+                $ksToUse = 'ksConfig3'
+            } elseif (!$ksCsvInfo.Nic2 -and !$ksCsvInfo.Dns2) {
+                $ksToUse = 'ksConfig4'
+            }
+            
+            # Builds out all of the appropriate Kickstart configs and adds them to an array
+            $ksConfigs = New-Object System.Collections.ArrayList
+            for ($i = 0; $i -lt $usbsConnected.Count; $i++) {
+                $ksConfigBuild = $esxHosts[$i]
+                switch ($ksToUse) {
+                    "ksConfig1" {
+                        $ksConfig = New-KsConfig -passwd $ksConfigBuild.Passwd -hostname $ksConfigBuild.Hostname -vlanId $ksConfigBuild.VlanId -ipAddr $ksConfigBuild.IpAddr -subnet $ksConfigBuild.Subnet -gateway $ksConfigBuild.Gateway -dns1 $ksConfigBuild.Dns1 -dns2 $ksConfigBuild.Dns2 -firstNic $ksConfigBuild.Nic1 -secondNic $ksConfigBuild.Nic2
+                    }
+                    "ksConfig2" {
+                        $ksConfig = New-KsConfig -passwd $ksConfigBuild.Passwd -hostname $ksConfigBuild.Hostname -vlanId $ksConfigBuild.VlanId -ipAddr $ksConfigBuild.IpAddr -subnet $ksConfigBuild.Subnet -gateway $ksConfigBuild.Gateway -dns1 $ksConfigBuild.Dns1 -firstNic $ksConfigBuild.Nic1 -secondNic $ksConfigBuild.Nic2
+                    } 
+                    "ksConfig3" {
+                        $ksConfig = New-KsConfig -passwd $ksConfigBuild.Passwd -hostname $ksConfigBuild.Hostname -vlanId $ksConfigBuild.VlanId -ipAddr $ksConfigBuild.IpAddr -subnet $ksConfigBuild.Subnet -gateway $ksConfigBuild.Gateway -dns1 $ksConfigBuild.Dns1 -dns2 $ksConfigBuild.Dns2 -firstNic $ksConfigBuild.Nic1
+                    }
+                    "ksConfig4" {
+                        $ksConfig = New-KsConfig -passwd $ksConfigBuild.Passwd -hostname $ksConfigBuild.Hostname -vlanId $ksConfigBuild.VlanId -ipAddr $ksConfigBuild.IpAddr -subnet $ksConfigBuild.Subnet -gateway $ksConfigBuild.Gateway -dns1 $ksConfigBuild.Dns1 -firstNic $ksConfigBuild.Nic1
+                    }
+                    Default {
+                        Write-Error -Message "CSV is not properly formated or does not have the correct information"
+                    }
+                }
+                $ksConfigs.Add($ksConfig) | Out-Null
+            }
+
+            # Add the kickstart file to the usb drives in order
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                $usbConfigNames = $usbNames[$i]
+                $ksConfigName = $ksConfigs[$i]
+                New-Item -Path /Volumes/$usbConfigNames/ks.cfg -Value $ksConfigName | Out-Null
+            }
+
+            # Removes the first X entries from the array 
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                $esxHosts.RemoveAt(0)
+            }
+
+            # Unmount the USB ESXi drives
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                diskutil unmountDisk $usbsConnected[$i].Disk | Out-Null
+            }
+
+            Write-Host -Object "The creation of the ESXi USB unattended disks are complete" -ForegroundColor Blue 
+            Write-Host -Object "The disks have been unmounted and are safe for removal" -ForegroundColor Green
+            say "The ESX USB installers were created successfully"
+
+            # Prompts for response to continue or stop
+            Get-UsbResponse
+
+            # Clears all of the variables for the next interation
+            $usbNames = $null
+            $jobs = $null
+            $ksCsvInfo = $null
+            $esxUsbs = $null
+            $usbsConnected = $null
+            Start-Sleep -Seconds 2
+
+        } until ($esxHosts.Count -eq 0)
     }
-
 }
 
 #########################################################
