@@ -980,6 +980,40 @@ function Get-UsbResponse {
 
 #########################################################
 
+function Find-EsxCsv {
+    <#
+        .SYNOPSIS
+            Checks the path given for the CSV location to make sure it's a valid path and imports the headers
+    #>
+    [CmdletBinding()]
+    param (
+        # File path the the csv
+        [Parameter(Mandatory)]
+        [string]
+        $FilePath
+    )
+    
+    begin {
+        Read-MsOsType
+    }
+    
+    process {
+        # Checks to make sure that the file path given has a CSV file
+        $findCsv = Test-Path -Path $FilePath -Include "*.csv"
+        if ($findCsv -eq $false) {
+            Write-Error -Message "The specified path to csv is incorrect, please verify path of csv and try again"
+            break
+        } else {
+            $csvImportHosts = Import-Csv -Path $FilePath
+        }
+
+        return $csvImportHosts
+    }
+
+}
+
+#########################################################
+
 function Reset-EsxUsb {
     <#
         .SYNOPSIS
@@ -1398,40 +1432,6 @@ function New-BulkEsxUsb {
 
         } until ($esxHosts.Count -eq 0)
     }
-}
-
-#########################################################
-
-function Find-EsxCsv {
-    <#
-        .SYNOPSIS
-            Checks the path given for the CSV location to make sure it's a valid path and imports the headers
-    #>
-    [CmdletBinding()]
-    param (
-        # File path the the csv
-        [Parameter(Mandatory)]
-        [string]
-        $FilePath
-    )
-    
-    begin {
-        Read-MsOsType
-    }
-    
-    process {
-        # Checks to make sure that the file path given has a CSV file
-        $findCsv = Test-Path -Path $FilePath -Include "*.csv"
-        if ($findCsv -eq $false) {
-            Write-Error -Message "The specified path to csv is incorrect, please verify path of csv and try again"
-            break
-        } else {
-            $csvImportHosts = Import-Csv -Path $FilePath
-        }
-
-        return $csvImportHosts
-    }
-
 }
 
 #########################################################
