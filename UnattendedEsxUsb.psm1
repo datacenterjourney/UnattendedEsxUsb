@@ -734,6 +734,10 @@ function Get-EsxIsoVersion {
 #########################################################
 
 function Set-BootCfg {
+    <#
+        .SYNOPSIS
+            Configures the settings for the BOOT.CFG files 
+    #>
     [CmdletBinding()]
     param (
         # Name of formatted USB drive
@@ -794,6 +798,10 @@ function Set-BootCfg {
 #########################################################
 
 function Set-BulkBootCfg {
+    <#
+        .SYNOPSIS
+            Configures the settings on multiple USBs for the BOOT.CFG files
+    #>
     [CmdletBinding()]
     param (
         # Name of formatted USB drive
@@ -861,6 +869,10 @@ function Set-BulkBootCfg {
 #########################################################
 
 function Get-DiskUtilDisk {
+    <#
+        .SYNOPSIS
+            Searches through diskutil for mounted devices with a specified label and returns an array of Disk names
+    #>
     [CmdletBinding()]
     param (
         # Value to search for in 'diskutil list'
@@ -908,6 +920,10 @@ function Get-DiskUtilDisk {
 #########################################################
 
 function Get-DiskUtilIdentifier {
+    <#
+        .SYNOPSIS
+            Searches through disktutil for mounted devices with a specified labed and returns an array of the disk identifiers
+    #>
     [CmdletBinding()]
     param (
         # Name to search for in 'diskutil list' to get identifier
@@ -954,6 +970,10 @@ function Get-DiskUtilIdentifier {
 #########################################################
 
 function Get-UsbResponse {
+    <#
+        .SYNOPSIS
+            Prompts for a user response to continue or stop processing
+    #>
     [CmdletBinding()]
     param (
         
@@ -1273,8 +1293,7 @@ function New-BulkEsxUsb {
 function Find-EsxCsv {
     <#
         .SYNOPSIS
-            Checks the path given for the CSV location to make sure it's a 
-            valid path and imports the headers
+            Checks the path given for the CSV location to make sure it's a valid path and imports the headers
     #>
     [CmdletBinding()]
     param (
