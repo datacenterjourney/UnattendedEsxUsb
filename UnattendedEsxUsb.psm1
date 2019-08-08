@@ -974,6 +974,7 @@ function Get-UsbResponse {
                 Get-UsbResponse
             }
         }
+        return $continueResponse
     }
 
 }
@@ -1420,7 +1421,10 @@ function New-BulkEsxUsb {
             say "The ESX USB installers were created successfully"
 
             # Prompts for response to continue or stop
-            Get-UsbResponse
+            $response = Get-UsbResponse
+            if ($response -eq 'stop') {
+                break
+            }
 
             # Clears all of the variables for the next interation
             $usbNames = $null
