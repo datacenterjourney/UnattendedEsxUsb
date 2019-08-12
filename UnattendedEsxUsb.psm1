@@ -1414,6 +1414,13 @@ function New-BulkEsxUsb {
                 New-Item -Path /Volumes/$usbConfigNames/ks.cfg -Value $ksConfigName | Out-Null
             }
 
+            # Notifies user which hosts were configured on what USB drive
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                $usbVolNames = $usbNames[$i]
+                $esxCreate = $esxHosts[$i]
+                Write-Host -Object "The USB disk $esxCreate was created on $usbVolNames" -ForegroundColor Green
+            }
+
             # Removes the first X entries from the array 
             for ($i = 0; $i -lt $usbNames.Count; $i++) {
                 $esxHosts.RemoveAt(0)
@@ -1425,13 +1432,6 @@ function New-BulkEsxUsb {
             }
 
             Write-Host -Object "The creation of the ESXi USB unattended disks are complete" -ForegroundColor Blue 
-            
-            # $usbsCreated = New-Object System.Collections.ArrayList
-            for ($i = 0; $i -lt $usbNames.Count; $i++) {
-                    $usbVolNames = $usbNames[$i]
-                    $esxCreate = $esxHosts[$i]
-                    Write-Host -Object "The USB disk $esxCreate was completed on $usbVolNames"
-            }
             Write-Host -Object "The disks have been unmounted and are safe for removal" -ForegroundColor Green
             say "The ESX USB installers were created successfully"
 
