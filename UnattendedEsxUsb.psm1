@@ -1312,7 +1312,7 @@ function New-BulkEsxUsb {
                 }
             }
 
-            if ($usbsConnected.Count -ge $esxHosts.Count) {
+            if ($usbsConnected.Count -gt $esxHosts.Count) {
                 $remaining = $usbsConnected.Count - $esxHosts.Count
                 Write-Host -Object "There are only $remaining USBs left to create, additional USBs will be ignored" -ForegroundColor Magenta
                 # Removes the last X entries from the array 
@@ -1425,6 +1425,13 @@ function New-BulkEsxUsb {
             }
 
             Write-Host -Object "The creation of the ESXi USB unattended disks are complete" -ForegroundColor Blue 
+            
+            # $usbsCreated = New-Object System.Collections.ArrayList
+            for ($i = 0; $i -lt $usbNames.Count; $i++) {
+                    $usbVolNames = $usbNames[$i]
+                    $esxCreate = $esxHosts[$i]
+                    Write-Host -Object "The USB disk $esxCreate was completed on $usbVolNames"
+            }
             Write-Host -Object "The disks have been unmounted and are safe for removal" -ForegroundColor Green
             say "The ESX USB installers were created successfully"
 
