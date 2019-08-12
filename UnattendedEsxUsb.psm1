@@ -1417,7 +1417,7 @@ function New-BulkEsxUsb {
             # Notifies user which hosts were configured on what USB drive
             for ($i = 0; $i -lt $usbNames.Count; $i++) {
                 $usbVolNames = $usbNames[$i]
-                $esxCreate = $esxHosts[$i]
+                $esxCreate = $esxHosts.Hostname[$i]
                 Write-Host -Object "The USB disk $esxCreate was created on $usbVolNames" -ForegroundColor Green
             }
 
