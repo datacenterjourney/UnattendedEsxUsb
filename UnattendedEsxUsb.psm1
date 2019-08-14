@@ -73,6 +73,7 @@ function New-KsConfig {
         $secondNic
     )
 
+    $lsLocalAcct = 'logicmonitor'
     $lmPasswd = 'MonLog19!'
 
     if ($secondNic -and $dns2) {
@@ -125,10 +126,10 @@ function New-KsConfig {
         esxcli system settings kernel set -s 'hyperthreadingMitigation' -v 'TRUE'
 
         # Create local user for monitoring
-        esxcli system account add -i logicmonitor -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
+        esxcli system account add -i $lsLocalAcct -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
 
         # Set the local monitoring permissions to 'ReadOnly'
-        esxcli system permission set -i logicmonitor -r ReadOnly
+        esxcli system permission set -i $lsLocalAcct -r ReadOnly
 
         # Disable CEIP
         esxcli system settings advanced set -o /UserVars/HostClientCEIPOptIn -i 1
@@ -196,10 +197,10 @@ function New-KsConfig {
         esxcli system settings kernel set -s 'hyperthreadingMitigation' -v 'TRUE'
 
         # Create local user for monitoring
-        esxcli system account add -i logicmonitor -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
+        esxcli system account add -i $lsLocalAcct -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
 
         # Set the local monitoring permissions to 'ReadOnly'
-        esxcli system permission set -i logicmonitor -r ReadOnly
+        esxcli system permission set -i $lsLocalAcct -r ReadOnly
                 
         ### Disable CEIP
         esxcli system settings advanced set -o /UserVars/HostClientCEIPOptIn -i 1
@@ -260,10 +261,10 @@ function New-KsConfig {
         esxcli system settings kernel set -s 'hyperthreadingMitigation' -v 'TRUE'
 
         # Create local user for monitoring
-        esxcli system account add -i logicmonitor -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
+        esxcli system account add -i $lsLocalAcct -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
 
         # Set the local monitoring permissions to 'ReadOnly'
-        esxcli system permission set -i logicmonitor -r ReadOnly
+        esxcli system permission set -i $lsLocalAcct -r ReadOnly
         
         ### Disable CEIP
         esxcli system settings advanced set -o /UserVars/HostClientCEIPOptIn -i 1
@@ -324,10 +325,10 @@ function New-KsConfig {
         esxcli system settings kernel set -s 'hyperthreadingMitigation' -v 'TRUE'
 
         # Create local user for monitoring
-        esxcli system account add -i logicmonitor -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
+        esxcli system account add -i $lsLocalAcct -p $lmPasswd -c $lmPasswd -d 'ReadOnly account for LogicMonitor'
 
         # Set the local monitoring permissions to 'ReadOnly'
-        esxcli system permission set -i logicmonitor -r ReadOnly
+        esxcli system permission set -i $lsLocalAcct -r ReadOnly
 
         ### Disable CEIP
         esxcli system settings advanced set -o /UserVars/HostClientCEIPOptIn -i 1
